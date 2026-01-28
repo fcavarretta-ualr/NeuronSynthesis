@@ -1,28 +1,29 @@
 import pandas as pd
+from pathlib import Path
 
 _file_list = {
   'aPC':{
     'SL':{
       'apical':{
-        'fname_sholl':'sl_sholl_plot',
-        'fname_bif':'sl_bifurcations'
+        'fname_sholl':'sl_apical_sholl_plot',
+        'fname_bif':'sl_apical_bifurcations'
         }
       },
     'PYR':{
       'apical':{
-        'fname_sholl':'pyr_sholl_plot',
-        'fname_bif':'pyr_bifurcations'
+        'fname_sholl':'pyr_apical_sholl_plot',
+        'fname_bif':'pyr_apical_bifurcations'
         }
       },
-    }
+    },
   'NEOC':{
     'PYR':{
       'apical':{
-        'fname_sholl':'mitral_sholl_plot',
-        'fname_bif':'mitral_bifurcations'
+        'fname_sholl':'neocortex_sholl_plot',
+        'fname_bif':'neocortex_bifurcations'
         }
       },
-    }
+    },
   'OB':{
     'MITRAL':{
       'lateral':{
@@ -98,7 +99,38 @@ def _get_by_path(d, path, sep="/"):
   return cur
 
 
-def _get_data(fname_sholl, fname_bif):
+def _get_data(fname_sholl, fname_bif):  
+  data = {}
+  
+  # Load Sholl plot summary statistics (bin counts + variance) from CSV
+  if fname_sholl:
+    df_sholl = pd.read_csv(_local_data_path(fname_sholl), index_col=0)
+    # manipulate the data
+    df_sholl = df_sholl.T.describe().T[['mean', 'std']]
+    df_sholl = df_sholl[(df_sholl != 0).all(axis=1)]
+    bin_size = df_sholl.index[1] - df_sholl.index[0]
+    df_sholl = df_sholl.to_numpy()
+
+    data['sholl'] = {
+      'bin_size':bin_size, 
+      'mean':df_sholl[:, 0],
+      'var':df_sholl[:, 1] ** 2,
+      }
+
+  if fname_bif:
+    # Load bifurcation summary statistics from CSV
+    df_bif = pd.read_csv(_local_data_path(fname_bif), index_col=0).to_numpy()
+
+    # Bundle inputs exactly as loaded (no preprocessing)
+    data["bifurcations"] = {
+      'mean':df_bif.mean(),
+      'var':df_bif.var()
+      }
+
+  return data
+
+
+def get_data(data_path):
   """
   Retrieve a dataset entry using a key-path of the form
   "<brain region>/<neuron class>/<subcellular section>".
@@ -171,37 +203,5 @@ def _get_data(fname_sholl, fname_bif):
   >>> data["bifurcations"]["mean"]
   12.3
   """
-  
-  data = {}
-  
-  # Load Sholl plot summary statistics (bin counts + variance) from CSV
-  if fname_sholl:
-    df_sholl = pd.read_csv(_local_data_path(fname_sholl), index_col=0)
-    # manipulate the data
-    df_sholl = df_sholl.T.describe().T[['mean', 'std']]
-    df_sholl = df_sholl[(df_sholl != 0).all(axis=1)]
-    bin_size = df_sholl.index[1] - df_sholl.index[0]
-    df_sholl = df_sholl.to_numpy()
-
-    data['sholl'] = {
-      'bin_size':bin_size, 
-      'mean':df_sholl[:, 0],
-      'var':df_sholl[:, 1] ** 2,
-      }
-
-  if fname_bif:
-    # Load bifurcation summary statistics from CSV
-    df_bif = pd.read_csv(_local_data_path(fname_bif), index_col=0).to_numpy()
-
-    # Bundle inputs exactly as loaded (no preprocessing)
-    data["bifurcations"] = {
-      'mean':df_bif.mean(),
-      'var':df_bif.var()
-      }
-
-  return data
-
-
-def get(data_path):
   return _get_data(**_get_by_path(_file_list, data_path))
   
