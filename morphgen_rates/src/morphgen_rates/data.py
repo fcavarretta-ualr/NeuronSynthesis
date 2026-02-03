@@ -1,47 +1,8 @@
 import pandas as pd
 from pathlib import Path
 
-_file_list = {
-  'aPC':{
-    'SL':{
-      'apical':{
-        'fname_sholl':'sl_apical_sholl_plot',
-        'fname_bif':'sl_apical_bifurcations'
-        }
-      },
-    'PYR':{
-      'apical':{
-        'fname_sholl':'pyr_apical_sholl_plot',
-        'fname_bif':'pyr_apical_bifurcations'
-        }
-      },
-    },
-  'NEOC':{
-    'PYR':{
-      'apical':{
-        'fname_sholl':'neocortex_sholl_plot',
-        'fname_bif':'neocortex_bifurcations'
-        }
-      },
-    },
-  'OB':{
-    'MITRAL':{
-      'lateral':{
-        'fname_sholl':'mitral_sholl_plot',
-        'fname_bif':'mitral_bifurcations'
-        }
-      },
-    'TUFTED':{
-      'lateral':{
-        'fname_sholl':'tufted_sholl_plot',
-        'fname_bif':'tufted_bifurcations'
-        }
-      },
-    }
-  }
 
-
-def _local_data_path(filename, ext="csv"):
+def _local_data_path(filename='morph_data', ext="csv"):
   """
   Build a path like: <this_file_dir>/data/<filename>.<ext>
 
@@ -58,150 +19,127 @@ def _local_data_path(filename, ext="csv"):
       Full path to the data file
   """
   work_dir = Path(__file__).resolve().parent
-  return work_dir / "data" / f"{filename}.{ext}"
+  return work_dir / f"{filename}.{ext}"
 
 
-def _get_by_path(d, path, sep="/"):
+def get_data(area, neuron_type):
   """
-  Retrieve a value from a nested dictionary using a path-like key string.
+  Retrieve summary morphology statistics for a given brain area and neuron class.
 
-  Example
-  -------
-  d = {"a": {"b": {"c": 123}}}
-  get_by_path(d, "a/b/c") -> 123
+  This function loads a local CSV dataset, filters rows matching the requested
+  `area` and `neuron_type`, and aggregates statistics by `section_type`. The
+  output is a nested dictionary keyed by section type (e.g., soma, apical, basal),
+  containing:
+
+  - Summary statistics for bifurcation counts and total length
+  - Estimated number of primary neurites at the soma (Count0)
+  - Sholl plot summary statistics (bin size, mean counts, standard deviation)
 
   Parameters
   ----------
-  d : dict
-      Nested dictionary
-  path : str
-      Path of keys, e.g. "keys1/keys2/keys3"
-  sep : str, default "/"
-      Path separator
-
-  Returns
-  -------
-  object
-      The value stored at the given path
-
-  Raises
-  ------
-  KeyError
-      If any key along the path is missing
-  TypeError
-      If a non-dict is encountered before the final key
-  """
-  cur = d
-  for k in path.split(sep):
-    if not isinstance(cur, dict):
-      raise TypeError(f"Expected dict at '{k}', got {type(cur).__name__}")
-    cur = cur[k]
-  return cur
-
-
-def _get_data(fname_sholl, fname_bif):  
-  data = {}
-  
-  # Load Sholl plot summary statistics (bin counts + variance) from CSV
-  if fname_sholl:
-    df_sholl = pd.read_csv(_local_data_path(fname_sholl), index_col=0)
-    # manipulate the data
-    df_sholl = df_sholl.T.describe().T[['mean', 'std']]
-    df_sholl = df_sholl[(df_sholl != 0).all(axis=1)]
-    bin_size = df_sholl.index[1] - df_sholl.index[0]
-    df_sholl = df_sholl.to_numpy()
-
-    data['sholl'] = {
-      'bin_size':bin_size, 
-      'mean':df_sholl[:, 0],
-      'var':df_sholl[:, 1] ** 2,
-      }
-
-  if fname_bif:
-    # Load bifurcation summary statistics from CSV
-    df_bif = pd.read_csv(_local_data_path(fname_bif), index_col=0).to_numpy()
-
-    # Bundle inputs exactly as loaded (no preprocessing)
-    data["bifurcations"] = {
-      'mean':df_bif.mean(),
-      'var':df_bif.var()
-      }
-
-  return data
-
-
-def get_data(data_path):
-  """
-  Retrieve a dataset entry using a key-path of the form
-  "<brain region>/<neuron class>/<subcellular section>".
-
-  The argument `data_path` is interpreted as a slash-separated path of keys used
-  to traverse a nested dataset dictionary. The selected dataset is expected to
-  contain both Sholl-plot statistics and bifurcation statistics; when both are
-  available, this function returns a standardized dictionary compatible with
-  `compute_rates`.
-
-  Parameters
-  ----------
-  data_path : str
-      Dataset identifier expressed as a key path:
-
-      "<brain region>/<neuron class>/<subcellular section>"
-
-      Examples:
-      - "CTX/pyr/apical"
-      - "HPC/pyr/basal"
-
-      Each component is used as a successive key lookup into the nested dataset
-      container.
+  area : str
+      Brain region identifier used in the dataset (must match values in the
+      'area' column of the CSV)
+  neuron_type : str
+      Neuron class identifier used in the dataset (must match values in the
+      'neuron_type' column of the CSV)
 
   Returns
   -------
   dict
-      If both Sholl and bifurcation information are present for the selected dataset,
-      returns:
+      Nested dictionary structured as:
 
       data = {
-        "sholl": {
-          "bin_size": float,
-          "mean": numpy.ndarray,   # shape (K,)
-          "var":  numpy.ndarray,   # shape (K,)
+        "<section_type>": {
+          "bifurcation_count": {"mean": ..., "std": ..., "min": ..., "max": ...},
+          "total_length": {"mean": ..., "std": ..., "min": ..., "max": ...},
+          "primary_count": {"mean": ..., "std": ..., "min": ..., "max": ...},
+          "sholl_plot": {
+            "bin_size": float,
+            "mean": list[float],
+            "std": list[float],
+          },
         },
-        "bifurcations": {
-          "mean": float,
-          "var":  float,
-        },
+        ...
       }
 
-      Where:
-      - `data["sholl"]["bin_size"]` is the spatial bin size used to define Sholl shells
-      - `data["sholl"]["mean"]` is the mean Sholl intersection count per radial bin
-      - `data["sholl"]["var"]` is the variance of the Sholl intersection count per bin
-      - `data["bifurcations"]["mean"]` is the mean bifurcation count
-      - `data["bifurcations"]["var"]` is the variance of the bifurcation count
+      Notes on fields:
+      - `primary_count` corresponds to the row group labeled 'Count0'
+      - Sholl values are collected from rows whose metric name starts with 'Count'
+        (including 'Count0'); users may want to interpret/plot them as a function
+        of radial bin index multiplied by `bin_size`
 
   Raises
   ------
-  KeyError
-      If any key along `data_path` is missing (brain region, neuron class, or section)
-  ValueError
-      If the selected dataset does not contain both Sholl and bifurcation data, or
-      if the provided arrays have incompatible shapes
+  AssertionError
+      If no rows match the requested `area` and `neuron_type`
 
   Notes
   -----
-  - `data_path` is a *key path*, not a filesystem path
-  - The function assumes the dataset entry referenced by `data_path` includes:
-      - Sholl bin size, mean array, variance array
-      - Bifurcation mean and variance
+  - The function expects the local CSV to include at least the following columns:
+      'area', 'neuron_type', 'neuron_name', 'section_type', 'bin_size'
+      plus metric columns including:
+        - 'bifurcation_count'
+        - 'total_length'
+        - 'Count0', 'Count1', ... (Sholl counts per radial bin)
+  - Statistics are computed using `pandas.DataFrame.groupby(...).describe()`.
+    Only the summary columns 'mean', 'std', 'min', 'max' are retained.
 
   Examples
   --------
-  >>> data = get("CTX/pyr/apical")
-  >>> data["sholl"]["bin_size"]
+  >>> data = get_data("CTX", "pyr")
+  >>> data["apical"]["bifurcation_count"]["mean"]
+  42.0
+  >>> data["apical"]["sholl_plot"]["bin_size"]
   50.0
-  >>> data["bifurcations"]["mean"]
-  12.3
+  >>> len(data["apical"]["sholl_plot"]["mean"])
+  20
   """
-  return _get_data(**_get_by_path(_file_list, data_path))
   
+  data = {}
+
+  area, neuron_type = parts
+    
+  # load data
+  df = pd.read_csv(_local_data_path(), index_col=0)
+
+  # select specific area and neuron type
+  df = df[(df['area'] == area) & (df['neuron_type'] == neuron_type)]
+
+  # ensure that there are area and neuron_type in the df
+  assert df.shape[0] > 0, "The area {area} or neuron class {neuron_type} are not known"
+  
+  # neuron name unnecessary
+  df.drop(['area', 'neuron_type', 'neuron_name'], axis=1, inplace=True)
+
+  # statistics
+  df = df.groupby('section_type').describe()
+
+  # select only a subset of columns
+  df = df.loc[:, df.columns.get_level_values(1).isin(['mean', 'std', 'min', 'max'])]
+
+  # get subsections
+  for section_type, row in df.iterrows():
+    data[section_type] = {}
+
+    # get statistics
+    for data_type in ['bifurcation_count', 'total_length']:
+      tmp = row.loc[row.index.get_level_values(0) == data_type, :]
+      tmp.index = tmp.index.droplevel(0)
+      data[section_type][data_type] = tmp.to_dict()
+
+    # count neurites at the soma
+    tmp = row.loc[row.index.get_level_values(0) == 'Count0', :]
+    tmp.index = tmp.index.droplevel(0)
+    data[section_type]['primary_count'] = tmp.to_dict()
+    
+    # sholl plots
+    tmp = row.loc[row.index.get_level_values(0).str.startswith('Count'), :]
+    data[section_type]['sholl_plot'] = {
+      'bin_size':row[('bin_size', 'mean')].tolist(),
+      'mean':tmp.loc[tmp.index.get_level_values(1) == 'mean', :].tolist(),
+      'std':tmp.loc[tmp.index.get_level_values(1) == 'std', :].tolist()
+      }
+
+  return data
+

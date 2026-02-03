@@ -35,23 +35,23 @@ def compute_rates(data, max_step_size):
       Input container with the following structure:
 
       data = {
-        "sholl": {
+        "sholl_plot": {
           "bin_size": float,
           "mean": numpy.ndarray,   # shape (K,)
           "var":  numpy.ndarray,   # shape (K,)
         },
-        "bifurcations": {
+        "bifurcation_count": {
           "mean": float,
           "var":  float,
         },
       }
 
       Where:
-      - `data["sholl"]["bin_size"]` is the spatial bin size used to build the Sholl plot
-      - `data["sholl"]["mean"][i]` is the mean Sholl intersection count in bin i
-      - `data["sholl"]["var"][i]` is the variance of the Sholl intersection count in bin i
-      - `data["bifurcations"]["mean"]` is the mean number of bifurcations
-      - `data["bifurcations"]["var"]` is the variance of the number of bifurcations
+      - `data["sholl_plot"]["bin_size"]` is the spatial bin size used to build the Sholl plot
+      - `data["sholl_plot"]["mean"][i]` is the mean Sholl intersection count in bin i
+      - `data["sholl_plot"]["var"][i]` is the variance of the Sholl intersection count in bin i
+      - `data["bifurcation_count"]["mean"]` is the mean number of bifurcations
+      - `data["bifurcation_count"]["var"]` is the variance of the number of bifurcations
 
     max_step_size : float
       Maximum advancement (in distance from the soma) allowed for a single
@@ -71,7 +71,7 @@ def compute_rates(data, max_step_size):
 
     Notes
     -----
-    - `data["sholl"]["mean"]` and `data["sholl"]["var"]` must be 1D arrays of equal length
+    - `data["sholl_plot"]["mean"]` and `data["sholl_plot"]["var"]` must be 1D arrays of equal length
     - Variances must be non-negative
     - Ensure `bin_size` and `max_step_size` use consistent spatial units
     """    
@@ -86,12 +86,15 @@ def compute_rates(data, max_step_size):
 
 
     global _Mean_Penalty, _Var_Penalty
-    dx = data['sholl']['bin_size']
-    Z =  data['sholl']['mean']
-    V = data['sholl']['var']
+    dx = data['sholl_plot']['bin_size']
+
+    min_zero_bin = min(data['sholl_plot']['mean'].index(0), data['sholl_plot']['std'].index(0))
+    
+    Z =  np.array(data['sholl_plot']['mean'][:min_zero_bin])
+    V = np.power(data['sholl_plot']['std'][:min_zero_bin], 2)
 
     if 'bifurcations' in data:
-        n_bif = [data['bifurcations']['mean'], data['bifurcations']['var']]
+        n_bif = [data['bifurcation_count']['mean'], data['bifurcation_count']['std'] ** 2]
     else:
         n_bif = None
 
