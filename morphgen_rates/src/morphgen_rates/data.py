@@ -97,8 +97,6 @@ def get_data(area, neuron_type):
   """
   
   data = {}
-
-  area, neuron_type = parts
     
   # load data
   df = pd.read_csv(_local_data_path(), index_col=0)

@@ -4,6 +4,7 @@ pyproject.toml
 src/morphgen_rates/__init__.py
 src/morphgen_rates/data.py
 src/morphgen_rates/init_count.py
+src/morphgen_rates/morph_data.csv
 src/morphgen_rates/rates.py
 src/morphgen_rates.egg-info/PKG-INFO
 src/morphgen_rates.egg-info/SOURCES.txt

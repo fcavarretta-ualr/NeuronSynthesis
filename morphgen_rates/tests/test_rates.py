@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
   # (Optional) inspect the input dictionary used by the estimator
   print("Input data keys:", list(data.keys()))
-  print("Sholl bin size:", data["sholl"]["bin_size"])
+  print("Sholl bin size:", data["sholl_plot"]["bin_size"])
 
   # Maximum advancement (distance from soma) allowed for one elongation step
   max_step_size = 5.0

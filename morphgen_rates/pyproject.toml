@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "morphgen-rates"
-version = "0.5.0"
+version = "0.5.3"
 description = "Compute bifurcation and annihilation rates from morphology data"
 authors = [
   { name = "Francesco Cavarretta", email = "fcavarretta@ualr.edu" },
@@ -27,4 +27,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-morphgen_rates = ["data/*.csv"]
+morphgen_rates = ["*.csv"]
