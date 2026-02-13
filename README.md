@@ -1,5 +1,5 @@
 > [!WARNING]
-> The authors used the equations in this work to implement a Python package that enables estimation of distance-dependent bifurcation and annihilation rates from reconstructed neuron morphology statistics. For more details, [visit the repository](https://github.com/fcavarretta-ualr/morphgen-rates)
+> The authors used the equations in this work to implement a Python package that enables estimation of distance-dependent bifurcation and annihilation rates from reconstructed neuron morphology statistics. For more details, [visit the repository](https://github.com/fcavarretta-ualr/morphgen-rates).
 
 # NeuronSynthesis
 
